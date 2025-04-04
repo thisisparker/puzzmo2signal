@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/huantt/plaintext-extractor"
 	"tailscale.com/tsnet"
@@ -31,7 +33,18 @@ func generateSecurePath() (string, error) {
 
 // getWebhookPath returns the webhook path, creating a new one if needed
 func getWebhookPath() (string, error) {
-	configFile := "webhook_config.json"
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user config directory: %v", err)
+	}
+
+	configDir := filepath.Join(userConfigDir, "puzzmo2signal")
+	configFile := filepath.Join(configDir, "webhook_config.json")
+
+	// Ensure config directory exists
+	if err := os.MkdirAll(configDir, 0700); err != nil {
+		return "", fmt.Errorf("failed to create config directory: %v", err)
+	}
 
 	// Try to read existing config
 	data, err := os.ReadFile(configFile)
