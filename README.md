@@ -1,6 +1,6 @@
 # puzzmo2signal
 
-This program sets up a minimal server to receive webhooks from [the puzzle site Puzzmo](https://www.puzzmo.com/), optionally strips the markdown formatting off them, and forwards them to a Signal group. It requires a working [signal-cli install](https://github.com/AsamK/signal-cli) and a (free) [Tailscale](https://tailscale.com/) account, which is used to make the server accessible over [Tailscale Funnel](https://tailscale.com/kb/1223/funnel).
+This program sets up a minimal server to receive webhooks from [the puzzle site Puzzmo](https://www.puzzmo.com/), optionally strips the markdown formatting off them, and forwards them to a Signal group. It requires a working [signal-cli install](https://github.com/AsamK/signal-cli) and a (free) [Tailscale](https://tailscale.com/) account, which is used to make the server accessible over [Tailscale Funnel](https://tailscale.com/kb/1223/funnel). For more information, read [the blog post](https://parkerhiggins.net/2025/04/webhooks-to-signal-groups-tailscale-puzzmo/).
 
 The program requires the following environment variables to be set before running:
 - `TS_HOSTNAME`: hostname for the Tailscale device and the subdomain for the URL. E.g. `puzzmo-webooks`
