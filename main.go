@@ -135,7 +135,7 @@ func makeWebhookHandler(preserveMarkdown bool) http.HandlerFunc {
 			return
 		}
 
-		cmd := exec.Command("signal-cli", "-u", signalPhone, "send", "-g", signalGroup, "-m", finalMessage)
+		cmd := exec.Command("signal-cli", "-u", signalPhone, "--trust-new-identities", "always", "send", "-g", signalGroup, "-m", finalMessage)
 		if err := cmd.Run(); err != nil {
 			log.Printf("Error sending Signal message: %v", err)
 			return
