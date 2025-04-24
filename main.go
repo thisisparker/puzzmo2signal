@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -10,8 +11,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/huantt/plaintext-extractor"
 	"tailscale.com/tsnet"
@@ -81,6 +82,13 @@ type DiscordWebhook struct {
 	// Add other fields as needed
 }
 
+// SignalAPIPayload represents the structure of the Signal API request
+type SignalAPIPayload struct {
+	Number     string   `json:"number"`
+	Message    string   `json:"message"`
+	Recipients []string `json:"recipients"`
+}
+
 // Create a handler factory function that takes the flag value
 func makeWebhookHandler(preserveMarkdown bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -90,8 +98,10 @@ func makeWebhookHandler(preserveMarkdown bool) http.HandlerFunc {
 			return
 		}
 
-		// Get Signal group ID from environment variable
+		// Get Signal configuration from environment variables
 		signalGroup := os.Getenv("SIGNAL_GROUP_ID")
+		signalPhone := os.Getenv("SIGNAL_PHONE")
+		signalAPIURL := os.Getenv("SIGNAL_API_URL")
 
 		// Read the request body
 		body, err := io.ReadAll(r.Body)
@@ -128,16 +138,50 @@ func makeWebhookHandler(preserveMarkdown bool) http.HandlerFunc {
 			finalMessage = *plaintextMessagePtr
 		}
 
-		// Send message via signal-cli
-		signalPhone := os.Getenv("SIGNAL_PHONE")
-		if signalPhone == "" {
-			log.Printf("SIGNAL_PHONE not configured")
+		// Prepare Signal API payload
+		signalPayload := SignalAPIPayload{
+			Number:     signalPhone,
+			Message:    finalMessage,
+			Recipients: []string{signalGroup},
+		}
+
+		// Ensure URL has a scheme
+		apiURL := signalAPIURL
+		if !strings.HasPrefix(apiURL, "http://") && !strings.HasPrefix(apiURL, "https://") {
+			apiURL = "http://" + apiURL
+		}
+
+		// Create request body using json.NewEncoder
+		var buf bytes.Buffer
+		if err := json.NewEncoder(&buf).Encode(signalPayload); err != nil {
+			log.Printf("Error encoding request body: %v", err)
 			return
 		}
 
-		cmd := exec.Command("signal-cli", "-u", signalPhone, "--trust-new-identities", "always", "send", "-g", signalGroup, "-m", finalMessage)
-		if err := cmd.Run(); err != nil {
+		// Create full request URL
+		fullURL := apiURL + "/v2/send"
+		log.Printf("Making request to: %s", fullURL)
+
+		// Send POST request to Signal API
+		req, err := http.NewRequest("POST", fullURL, &buf)
+		if err != nil {
+			log.Printf("Error creating request: %v", err)
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
 			log.Printf("Error sending Signal message: %v", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			// Read and log error response body
+			respBody, _ := io.ReadAll(resp.Body)
+			log.Printf("Signal API returned non-200 status: %d, response: %s", resp.StatusCode, string(respBody))
 			return
 		}
 	}
@@ -145,7 +189,7 @@ func makeWebhookHandler(preserveMarkdown bool) http.HandlerFunc {
 
 func main() {
 	// Verify required environment variables
-	requiredEnvVars := []string{"TS_HOSTNAME", "TS_AUTHKEY", "SIGNAL_PHONE", "SIGNAL_GROUP_ID"}
+	requiredEnvVars := []string{"TS_HOSTNAME", "TS_AUTHKEY", "SIGNAL_PHONE", "SIGNAL_GROUP_ID", "SIGNAL_API_URL"}
 	for _, envVar := range requiredEnvVars {
 		if os.Getenv(envVar) == "" {
 			log.Fatalf("%s environment variable is required", envVar)
