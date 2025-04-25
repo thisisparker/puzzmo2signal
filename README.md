@@ -1,12 +1,13 @@
 # puzzmo2signal
 
-This program sets up a minimal server to receive webhooks from [the puzzle site Puzzmo](https://www.puzzmo.com/), optionally strips the markdown formatting off them, and forwards them to a Signal group. It requires a working [signal-cli install](https://github.com/AsamK/signal-cli) and a (free) [Tailscale](https://tailscale.com/) account, which is used to make the server accessible over [Tailscale Funnel](https://tailscale.com/kb/1223/funnel). For more information, read [the blog post](https://parkerhiggins.net/2025/04/webhooks-to-signal-groups-tailscale-puzzmo/).
+This program sets up a minimal server to receive webhooks from [the puzzle site Puzzmo](https://www.puzzmo.com/), optionally strips the markdown formatting off them, and forwards them to a Signal group. It requires a working install of [the Dockerized signal-cli REST API](https://github.com/bbernhard/signal-cli-rest-api) and a (free) [Tailscale](https://tailscale.com/) account, which is used to make the server accessible over [Tailscale Funnel](https://tailscale.com/kb/1223/funnel). For more information, read [the blog post](https://parkerhiggins.net/2025/04/webhooks-to-signal-groups-tailscale-puzzmo/).
 
 The program requires the following environment variables to be set before running:
 - `TS_HOSTNAME`: hostname for the Tailscale device and the subdomain for the URL. E.g. `puzzmo-webooks`
 - `TS_AUTHKEY`: authorization key for a Tailscale device, which can be obtained from your [admin console](https://login.tailscale.com/admin/settings/keys). Should be set to reusable and ephemeral, and the member or tag that owns the device should have the Funnel `nodeAttr` [set in your ACLs](https://tailscale.com/kb/1337/acl-syntax#node-attributes)
-- `SIGNAL_PHONE`: number registered with signal-cli to send messages from. In the format `+12128675309`
-- `SIGNAL_GROUP_ID`: base64 identifier for the Signal group to message, available with the `signal-cli listGroups` command. The sender should be a member of this group.
+- `SIGNAL_PHONE`: number registered with Signal to send messages from. In the format `+12128675309`
+- `SIGNAL_API_URL`: URL at which the signal-cli REST API can be requested
+- `SIGNAL_GROUP_ID`: identifier for the Signal group to message, available by requesting `SIGNAL_API_URL/v1/groups/SIGNAL_PHONE`. The sender must be a member of this group.
 
 By default, we remove the Markdown formatting and links for better presentation in Signal. If you'd like to preserve those, you can pass the `--preserve-markdown` flag as an argument.
 
